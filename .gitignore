@@ -1,0 +1,32 @@
+# Dependencies
+node_modules/
+*/node_modules/
+**/node_modules/
+
+# Environment
+.env
+*.env
+.env.*
+
+# Build
+dist/
+build/
+client/dist/
+
+# Uploads & Videos
+server/public/videos/
+server/public/uploads/
+*.mp4
+*.mkv
+*.avi
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Autres
+*.zip

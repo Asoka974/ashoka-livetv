@@ -1,0 +1,53 @@
+const path = require('path');
+const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
+const { Low, JSONFile } = require('lowdb');
+
+const app = express();
+const server = http.createServer(app);
+const io = new Server(server);
+
+// DB (lowdb)
+const file = path.join(__dirname, 'db.json');
+const adapter = new JSONFile(file);
+const db = new Low(adapter);
+
+async function initDB(){
+  await db.read();
+  db.data = db.data || { stamps: [] };
+  await db.write();
+}
+initDB();
+
+app.use(express.json());
+app.use('/videos', express.static(path.join(__dirname, 'public/videos')));
+app.use(express.static(path.join(__dirname, '..', 'client', 'dist')));
+
+app.get('/api/stamps', async (req, res) => {
+  const videoId = req.query.videoId || 'sample';
+  await db.read();
+  const stamps = (db.data.stamps || []).filter(s => s.videoId === videoId);
+  res.json(stamps);
+});
+
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'client', 'dist', 'index.html'));
+});
+
+io.on('connection', (socket) => {
+  socket.on('new-stamp', async (payload) => {
+    const stamp = {
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2,8),
+      ...payload
+    };
+    await db.read();
+    db.data.stamps = db.data.stamps || [];
+    db.data.stamps.push(stamp);
+    await db.write();
+    io.emit('stamp-created', stamp);
+  });
+});
+
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));

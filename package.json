@@ -1,0 +1,10 @@
+{
+  "name": "stream-stamps-proto",
+  "private": true,
+  "workspaces": ["client", "server"],
+  "scripts": {
+    "dev": "echo 'Use two terminals: cd server && npm run dev  AND cd client && npm run dev'",
+    "start": "cd server && npm start"
+  },
+  "devDependencies": {}
+}
