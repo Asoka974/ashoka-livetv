@@ -149,6 +149,18 @@ io.on("connection", (socket) => {
   });
 });
 
+// Servir le frontend React en production
+if (process.env.NODE_ENV === 'production') {
+  const path = require('path');
+  app.use(express.static(path.join(__dirname, 'public/dist')));
+  
+  app.get('*', (req, res) => {
+    if (!req.path.startsWith('/api') && !req.path.startsWith('/socket.io') && !req.path.startsWith('/videos')) {
+      res.sendFile(path.join(__dirname, 'public/dist/index.html'));
+    }
+  });
+}
+
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
