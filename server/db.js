@@ -1,5 +1,9 @@
 const { Pool } = require("pg");
 
+// DEBUG
+console.log("🔍 DATABASE_URL exists:", !!process.env.DATABASE_URL);
+console.log("🔍 NODE_ENV:", process.env.NODE_ENV);
+
 // Utiliser DATABASE_URL de Railway en production, localhost en développement
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL || "postgresql://ashoka_user:motdepasse123@localhost:5432/ashoka_livetv",
@@ -16,4 +20,3 @@ pool.on("error", (err) => {
 });
 
 module.exports = pool;
-
