@@ -1,16 +1,11 @@
-// server/db.js
 const { Pool } = require("pg");
 
-// Configuration de la connexion PostgreSQL
+// Utiliser DATABASE_URL de Railway en production, localhost en développement
 const pool = new Pool({
-  user: "ashoka_user",
-  host: "localhost",
-  database: "ashoka_livetv",
-  password: "motdepasse123",
-  port: 5432,
+  connectionString: process.env.DATABASE_URL || "postgresql://ashoka_user:motdepasse123@localhost:5432/ashoka_livetv",
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
 
-// Tester la connexion
 pool.on("connect", () => {
   console.log("✅ Connected to PostgreSQL database");
 });
