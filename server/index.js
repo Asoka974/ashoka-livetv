@@ -26,7 +26,13 @@ const io = new Server(server, {
 });
 
 // Middleware
-app.use(express.json());
+app.use((req, res, next) => {
+  if (req.path === "/api/videos/upload") {
+    return next(); // Skip express.json() pour les uploads
+  }
+  express.json({ limit: "10mb" })(req, res, next);
+});
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.use(cookieParser());
 app.set("pool", pool);
 
@@ -40,7 +46,7 @@ app.get("/api/stamps", async (req, res) => {
     const videoId = req.query.videoId || "sample";
     const result = await pool.query(
       "SELECT * FROM stamps WHERE video_id = $1 ORDER BY time ASC",
-      [videoId]
+      [videoId],
     );
     const stamps = result.rows.map((row) => ({
       id: row.id,
@@ -107,7 +113,7 @@ io.on("connection", (socket) => {
       }
       const result = await pool.query(
         "INSERT INTO stamps (video_id, time, text, author) VALUES ($1, $2, $3, $4) RETURNING *",
-        [videoId, time, text, author]
+        [videoId, time, text, author],
       );
       const newStamp = result.rows[0];
       const stamp = {
@@ -132,20 +138,24 @@ io.on("connection", (socket) => {
 });
 
 // Servir le frontend React (après toutes les routes API)
-if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, 'public/dist')));
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public/dist/index.html'));
+if (process.env.NODE_ENV === "production") {
+  app.use(express.static(path.join(__dirname, "public/dist")));
+  app.get("*", (req, res) => {
+    res.sendFile(path.join(__dirname, "public/dist/index.html"));
   });
 }
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
-  console.log(`📺 Videos served from: ${path.join(__dirname, "public/videos")}`);
+  console.log(
+    `📺 Videos served from: ${path.join(__dirname, "public/videos")}`,
+  );
   console.log(`🔐 Auth routes available at /api/auth`);
   console.log(`🎬 Video routes available at /api/videos`);
-  console.log(`☁️  Cloudinary configured: ${process.env.CLOUDINARY_CLOUD_NAME}`);
+  console.log(
+    `☁️  Cloudinary configured: ${process.env.CLOUDINARY_CLOUD_NAME}`,
+  );
 });
 
 process.on("SIGTERM", () => {
