@@ -1,12 +1,22 @@
+require("dotenv").config(); // Charger les variables d'environnement
+
 const path = require("path");
 const express = require("express");
 const http = require("http");
+const fs = require("fs");
+const cookieParser = require("cookie-parser");
 const { Server } = require("socket.io");
 const { randomUUID } = require("crypto");
 const pool = require("./db");
+const { authRouter, authenticateToken } = require("./routes/auth");
+const videosRouter = require("./routes/videos");
 
 const app = express();
 const server = http.createServer(app);
+// Augmenter les timeouts pour les gros uploads
+server.timeout = 30 * 60 * 1000; // 30 minutes
+server.keepAliveTimeout = 30 * 60 * 1000;
+server.headersTimeout = 30 * 60 * 1000;
 const io = new Server(server, {
   cors: {
     origin: "*",
@@ -14,8 +24,56 @@ const io = new Server(server, {
   },
 });
 
+// Middleware
 app.use(express.json());
-app.use("/videos", express.static(path.join(__dirname, "public/videos")));
+app.use(cookieParser());
+
+// Rendre pool accessible aux routes
+app.set("pool", pool);
+
+// Routes d'authentification
+app.use("/api/auth", authRouter);
+
+// Routes vidéos
+app.use("/api/videos", videosRouter);
+
+// Route spéciale pour le streaming vidéo avec support des range requests
+app.get("/videos/:filename", (req, res) => {
+  const filename = req.params.filename;
+  const videoPath = path.join(__dirname, "public/videos", filename);
+
+  if (!fs.existsSync(videoPath)) {
+    return res.status(404).send("Video not found");
+  }
+
+  const stat = fs.statSync(videoPath);
+  const fileSize = stat.size;
+  const range = req.headers.range;
+
+  if (range) {
+    const parts = range.replace(/bytes=/, "").split("-");
+    const start = parseInt(parts[0], 10);
+    const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+    const chunksize = end - start + 1;
+    const file = fs.createReadStream(videoPath, { start, end });
+    const head = {
+      "Content-Range": `bytes ${start}-${end}/${fileSize}`,
+      "Accept-Ranges": "bytes",
+      "Content-Length": chunksize,
+      "Content-Type": "video/mp4",
+    };
+    res.writeHead(206, head);
+    file.pipe(res);
+  } else {
+    const head = {
+      "Content-Length": fileSize,
+      "Content-Type": "video/mp4",
+    };
+    res.writeHead(200, head);
+    fs.createReadStream(videoPath).pipe(res);
+  }
+});
+
 app.use(express.static(path.join(__dirname, "..", "client", "dist")));
 
 // API: Récupérer les stamps
@@ -91,11 +149,28 @@ io.on("connection", (socket) => {
   });
 });
 
+// Servir le frontend React en production
+if (process.env.NODE_ENV === 'production') {
+  const path = require('path');
+  app.use(express.static(path.join(__dirname, 'public/dist')));
+  
+  app.get('*', (req, res) => {
+    if (!req.path.startsWith('/api') && !req.path.startsWith('/socket.io') && !req.path.startsWith('/videos')) {
+      res.sendFile(path.join(__dirname, 'public/dist/index.html'));
+    }
+  });
+}
+
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
+server.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
   console.log(
     `📺 Videos served from: ${path.join(__dirname, "public/videos")}`,
+  );
+  console.log(`🔐 Auth routes available at /api/auth`);
+  console.log(`🎬 Video routes available at /api/videos`);
+  console.log(
+    `☁️  Cloudinary configured: ${process.env.CLOUDINARY_CLOUD_NAME}`,
   );
 });
 
