@@ -12,7 +12,7 @@ let globalSocket: Socket | null = null;
 
 function getSocket() {
   if (!globalSocket) {
-    globalSocket = io("http://localhost:3000", {
+    globalSocket = io(window.location.origin, {
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,

@@ -11,7 +11,7 @@ import { LogOut, Home, Film, Share2 } from "lucide-react";
 let globalSocket = null;
 function getSocket() {
     if (!globalSocket) {
-        globalSocket = io("http://localhost:3000", {
+        globalSocket = io(window.location.origin, {
             reconnection: true,
             reconnectionDelay: 1000,
             reconnectionDelayMax: 5000,
